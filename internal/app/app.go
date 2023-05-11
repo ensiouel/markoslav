@@ -1,0 +1,80 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"github.com/pressly/goose"
+	"log"
+	"markoslav/internal/bot"
+	"markoslav/internal/bot/handler"
+	"markoslav/internal/config"
+	"markoslav/internal/service"
+	"markoslav/internal/storage"
+	"markoslav/internal/usecase"
+	"markoslav/pkg/postgres"
+	"os/signal"
+	"syscall"
+)
+
+type App struct {
+	conf config.Config
+}
+
+func New() *App {
+	conf := config.New()
+
+	return &App{
+		conf: conf,
+	}
+}
+
+func (app *App) Run() {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	b := bot.New(app.conf.Bot)
+
+	pgConfig := postgres.Config{
+		Host: app.conf.Postgres.Host, Port: app.conf.Postgres.Port, DB: app.conf.Postgres.DB,
+		User: app.conf.Postgres.User, Password: app.conf.Postgres.Password,
+	}
+	pgClient, err := postgres.NewClient(ctx, pgConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = migrate("up", "migration", pgConfig.String()); err != nil {
+		log.Fatalf("migration error: %s", err)
+	}
+
+	captionStorage := storage.NewCaptionStorage(pgClient)
+	captionService := service.NewCaptionService(captionStorage)
+
+	imageService := service.NewImageService()
+
+	captionUsecase := usecase.NewCaptionUsecase(captionService, imageService)
+
+	captionHandler := handler.NewCaptionHandler(b.API, captionUsecase, app.conf.Bot.AdminList)
+
+	go b.Handle(captionHandler).
+		Run()
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("graceful shutdown")
+	}
+}
+
+func migrate(command string, dir string, dbstring string) error {
+	db, err := goose.OpenDBWithDriver("postgres", dbstring)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	if err = goose.Run(command, db, dir); err != nil {
+		return err
+	}
+
+	return nil
+}
