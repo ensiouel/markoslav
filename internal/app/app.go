@@ -18,6 +18,7 @@ import (
 
 type App struct {
 	conf config.Config
+	bot  *bot.Bot
 }
 
 func New() *App {
@@ -25,14 +26,13 @@ func New() *App {
 
 	return &App{
 		conf: conf,
+		bot:  bot.New(conf.Bot),
 	}
 }
 
 func (app *App) Run() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-
-	b := bot.New(app.conf.Bot)
 
 	pgConfig := postgres.Config{
 		Host: app.conf.Postgres.Host, Port: app.conf.Postgres.Port, DB: app.conf.Postgres.DB,
@@ -50,13 +50,13 @@ func (app *App) Run() {
 	captionStorage := storage.NewCaptionStorage(pgClient)
 	captionService := service.NewCaptionService(captionStorage)
 
-	imageService := service.NewImageService()
+	imageService := service.NewImageService("static/Lobster-Regular.ttf")
 
 	captionUsecase := usecase.NewCaptionUsecase(captionService, imageService)
 
-	captionHandler := handler.NewCaptionHandler(b.API, captionUsecase, app.conf.Bot.AdminList)
+	captionHandler := handler.NewCaptionHandler(app.bot.API, captionUsecase, app.conf.Bot.AdminList)
 
-	go b.Handle(captionHandler).
+	go app.bot.Handle(captionHandler).
 		Run()
 
 	select {

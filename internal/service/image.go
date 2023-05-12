@@ -12,10 +12,11 @@ type ImageService interface {
 }
 
 type imageService struct {
+	fontPath string
 }
 
-func NewImageService() ImageService {
-	return &imageService{}
+func NewImageService(fontPath string) ImageService {
+	return &imageService{fontPath: fontPath}
 }
 
 func (service *imageService) Draw(_ context.Context, caption model.Caption, img image.Image) (image.Image, error) {
@@ -25,7 +26,7 @@ func (service *imageService) Draw(_ context.Context, caption model.Caption, img 
 	height := float64(c.Height())
 	padding := 20.0
 
-	if err := c.LoadFontFace("static/Lobster-Regular.ttf", width*0.08); err != nil {
+	if err := c.LoadFontFace(service.fontPath, width*0.08); err != nil {
 		return nil, err
 	}
 

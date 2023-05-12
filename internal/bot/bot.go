@@ -55,12 +55,12 @@ func (bot *Bot) Run() {
 }
 
 func (bot *Bot) clearUpdatesChannel(updatesChannel tgbotapi.UpdatesChannel) {
-	timer := time.NewTimer(15 * time.Second)
+	timer := time.NewTimer(5 * time.Second)
 
 	for {
 		select {
 		case <-updatesChannel:
-			timer.Reset(15 * time.Second)
+			timer.Reset(5 * time.Second)
 		case <-timer.C:
 			return
 		}

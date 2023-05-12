@@ -239,7 +239,7 @@ func (handler *CaptionHandler) Register(mux *telemux.Mux) {
 								reply.Text = fmt.Sprintf("Не удалось отправить подпись. %s", detail)
 							}
 
-							if _, err := handler.api.Send(reply); err != nil {
+							if _, err = handler.api.Send(reply); err != nil {
 								log.Println(err)
 								return
 							}
@@ -393,13 +393,13 @@ func ApprovingCaptionsMessageText(update *telemux.Update) (string, *tgbotapi.Inl
 		update.PersistenceContext.ClearData()
 		update.PersistenceContext.SetState("")
 
-		return "Произошла непредвиденная ошибка.", nil
+		return UnknownErrorMessageText, nil
 	}
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Одобрить", "approve_caption"),
-			tgbotapi.NewInlineKeyboardButtonData("Отклонить", "reject_caption"),
+			tgbotapi.NewInlineKeyboardButtonData("✔️", "approve_caption"),
+			tgbotapi.NewInlineKeyboardButtonData("❌", "reject_caption"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel"),
